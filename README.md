@@ -42,3 +42,35 @@ Welcome to the source code of my personal **Developer Portfolio**, built with La
 │   └── web.php
 └── public/
     └── images/
+
+
+## 📦 Setup Instructions
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/yourusername/portfolio.git
+cd portfolio
+
+### 2. Install dependencies
+
+composer install
+npm install && npm run dev
+
+### 3. Configure ENV
+
+cp .env.example .env
+php artisan key:generate
+
+Update .env with your email SMTP credentials for the contact form.
+
+### 4. Run migrations (If needed)
+
+php artisan migrate
+
+
+### 5. Serve the app
+
+php artisan serve
+
+Access at: http://localhost:8000
