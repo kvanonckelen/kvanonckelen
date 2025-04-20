@@ -9,3 +9,107 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Keyframes for the carousel animation */
+@keyframes carousel {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+  
+  /* Applying the animation to the logos container */
+  .animate-carousel {
+    animation: carousel 20s linear infinite;
+  }
+  
+  html, body {
+    margin: 0;
+    padding: 0;
+    //overflow-x: hidden;
+    overflow-y: auto;
+    background-color: whitesmoke;
+    scroll-behavior: smooth
+  }
+
+  #loading-screen {
+    transition: opacity 0.5s ease-out;
+  }
+
+  /* Square wave spinner animation */
+  @keyframes bounce-delay {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  .wave-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .wave-box {
+    width: 24px;
+    height: 24px;
+    background-color: #00FFFF;
+    border-radius: 0.25rem;
+    animation: bounce-delay 0.6s infinite ease-in-out;
+  }
+
+  .delay-0   { animation-delay: 0ms; }
+  .delay-150 { animation-delay: 150ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-450 { animation-delay: 450ms; }
+
+  .about-text {
+    flex: 1 1 60%;
+  }
+  
+  .about-text h2 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .about-text p {
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+  }
+  
+  .about-avatar {
+    flex: 1 1 30%;
+    text-align: center;
+  }
+  
+  .about-avatar img {
+    max-width: 250px;
+    border-radius: 9999px;
+    box-shadow: 0 0 40px rgba(0,255,255,0.1);
+  }
+
+
+
+
+  @keyframes marquee {
+    0%   { transform: translateX(0%); }
+    100% { transform: translateX(-50%); }
+  }
+  
+  .animate-marquee {
+    animation: marquee 20s linear infinite;
+  }
+  
+  
+ 
+ 
+  
