@@ -23,6 +23,7 @@ Welcome to the source code of my personal **Developer Portfolio**, built with La
 - **Mail Configuration (Contact Form)**
 
 ## 🧩 Folder Structure
+```bash
 
 ├── app/
 │   └── Http/
@@ -47,19 +48,19 @@ Welcome to the source code of my personal **Developer Portfolio**, built with La
 
 ### 1. Clone the Repository
 
-```bash
+```
 git clone https://github.com/yourusername/portfolio.git
 cd portfolio
 
 ### 2. Install dependencies
 
-```bash
+```
 composer install
 npm install && npm run dev
 
 ### 3. Configure ENV
 
-```bash
+```
 cp .env.example .env
 php artisan key:generate
 
@@ -68,13 +69,13 @@ Update .env with your email SMTP credentials for the contact form.
 
 ### 4. Run migrations (If needed)
 
-```bash
+```
 php artisan migrate
 
 
 ### 5. Serve the app
 
-```bash
+```
 php artisan serve
 
 ```
