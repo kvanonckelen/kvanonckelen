@@ -21,3 +21,12 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+.gitignore
+.dockerignore
+.git
+.env.example
+.gitattributes
+composer.lock
+package-lock.json
+README.md
+artisan

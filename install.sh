@@ -50,40 +50,78 @@ if [[ -n "$MAIL_HOST" ]]; then
     read -p "From name: " MAIL_FROM_NAME
 fi
 
-# Install packages
-echo "📦 Installing dependencies..."
-apt update && apt upgrade -y
-apt install -y unzip curl git nginx supervisor cron sudo
+# Helper: install package if not present
+install_if_missing() {
+    if ! dpkg -s "$1" &>/dev/null; then
+        echo "📦 Installing $1..."
+        apt install -y "$1"
+    else
+        echo "✅ $1 already installed."
+    fi
+}
 
-# Install PHP extensions
-echo "🔧 Installing PHP extensions..."
-apt install -y php php8.3-{fpm,mbstring,xml,bcmath,curl,zip,dev,cli,common,tokenizer,gd,pgsql,mysql,sqlite3,redis} 
-php -m | grep pcntl
+# Install packages
+echo "📦 Installing system dependencies..."
+DEBIAN_FRONTEND=noninteractive apt update && apt upgrade -y
+for pkg in unzip curl git nginx supervisor cron sudo; do
+    install_if_missing "$pkg"
+done
+
+echo "🔧 Installing PHP & extensions..."
+PHP_PACKAGES=(
+  php php8.3-{fpm,mbstring,xml,bcmath,curl,zip,dev,cli,common,tokenizer,gd,pgsql,mysql,sqlite3,redis}
+)
+for pkg in "${PHP_PACKAGES[@]}"; do
+    install_if_missing "$pkg"
+done
+
+php -m | grep pcntl > /dev/null
 if [ $? -ne 0 ]; then
     echo "❌ PHP pcntl extension is not installed. Please install it and rerun the script."
     exit 1
 fi
-/usr/sbin/php-fpm8.3
 
-# Database engines
+# Start PHP-FPM if not running
+if ! pgrep php-fpm8.3 > /dev/null; then
+    echo "▶️ Starting PHP-FPM..."
+    /usr/sbin/php-fpm8.3
+else
+    echo "✅ PHP-FPM is already running."
+fi
 
+# Install Node.js
+if ! command -v node > /dev/null || [[ "$(node -v)" != v22* ]]; then
+    echo "📦 Installing Node.js v22..."
+    curl -sL https://deb.nodesource.com/setup_22.x | bash -
+    apt install -y nodejs
+else
+    echo "✅ Node.js $(node -v) is already installed."
+fi
+
+# Install Composer
+if ! command -v composer > /dev/null; then
+    echo "📦 Installing Composer..."
+    curl -sS https://getcomposer.org/installer | php
+    mv composer.phar /usr/local/bin/composer
+else
+    echo "✅ Composer already installed."
+fi
+
+# Database setup
 if [[ "$DB_CONNECTION" == "pgsql" ]]; then
-    apt install -y php-pgsql postgresql postgresql-contrib
+    install_if_missing "postgresql"
+    install_if_missing "postgresql-contrib"
     sudo -u postgres psql <<EOF
 CREATE USER laravel WITH PASSWORD 'secret';
 CREATE DATABASE laravel_db OWNER laravel;
 ALTER ROLE laravel SUPERUSER;
 EOF
 elif [[ "$DB_CONNECTION" == "mysql" ]]; then
-    apt install -y php-mysql mysql-server
-
+    install_if_missing "mysql-server"
     echo "🛡 Creating MySQL database and user..."
-    # Default fallback if user left DB_USER/PASS blank
     DB_DATABASE=${DB_DATABASE:-laravel_db}
     DB_USERNAME=${DB_USERNAME:-laravel}
     DB_PASSWORD=${DB_PASSWORD:-secret}
-
-    # Secure MySQL root connection (non-interactive)
     mysql -u root <<MYSQL_SCRIPT
 CREATE DATABASE IF NOT EXISTS \`$DB_DATABASE\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '$DB_USERNAME'@'localhost' IDENTIFIED BY '$DB_PASSWORD';
@@ -92,25 +130,15 @@ FLUSH PRIVILEGES;
 MYSQL_SCRIPT
 fi
 
-# install Node.js and npm
-curl -sL https://deb.nodesource.com/setup_22.x | bash -
-apt install -y nodejs
-
-# Install Composer
-echo "📦 Installing Composer..."
-curl -sS https://getcomposer.org/installer | php
-mv composer.phar /usr/local/bin/composer
-
-# Project move
+# Move project
 echo "📁 Moving project to $APP_DIR..."
 mkdir -p "$APP_DIR"
 cp -R . "$APP_DIR"
 chown -R www-data:www-data "$APP_DIR"
 chmod -R 775 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
-
 cd "$APP_DIR"
 
-# Generate .env dynamically
+# Generate .env
 echo "⚙️ Generating .env..."
 cat > .env <<EOL
 APP_NAME="$APP_TITLE"
@@ -151,7 +179,7 @@ MAIL_FROM_NAME="$MAIL_FROM_NAME"
 EOL
 fi
 
-# Install Laravel
+# Laravel install
 echo "📦 Installing Laravel..."
 composer install --no-dev --optimize-autoloader
 php artisan key:generate
@@ -160,7 +188,7 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-# Frontend build
+# Vite build
 if [ -f "vite.config.js" ]; then
     echo "🎨 Building frontend (Vite)..."
     npm install
@@ -183,8 +211,9 @@ server {
 
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        include fastcgi_params;
     }
 
     location ~ /\.ht {
@@ -194,9 +223,7 @@ server {
 EOF
 
 ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
-nginx -t
-echo "🔄 Reloading Nginx..."
-nginx && nginx -s reload
+nginx -t && nginx -s reload
 
 # SSL
 read -p "🔐 Enable SSL with Let's Encrypt? (y/n): " ENABLE_SSL
@@ -205,8 +232,10 @@ if [[ "$ENABLE_SSL" == "y" ]]; then
     certbot --nginx -d "$(echo "$APP_URL" | sed 's|https\?://||')"
 fi
 
-# Laravel cron
+# Laravel scheduler
 echo "⏰ Setting up Laravel scheduler cron job..."
+install_if_missing "cron"
 (crontab -l 2>/dev/null; echo "* * * * * cd $APP_DIR && php artisan schedule:run >> /dev/null 2>&1") | crontab -
+service cron restart || true
 
 echo "✅ Laravel successfully deployed at $APP_URL"
